@@ -20,13 +20,12 @@ const upload = multer({ storage });
 
 exports.uploadImageByType = async (req, res) => {
   try {
-    const { aboutPageId, imageType } = req.body; // Extract aboutPageId and imageType from the request body
-    const imageFile = req.file; // Single uploaded file
+    const { imageType } = req.body;
+    const imageFile = req.file;
+    console.log(imageFile);
 
-    if (!aboutPageId || !imageType) {
-      return res
-        .status(400)
-        .json({ error: "aboutPageId and imageType are required" });
+    if (!imageType) {
+      return res.status(400).json({ error: "ImageType are required" });
     }
 
     if (!imageFile) {
@@ -52,7 +51,6 @@ exports.uploadImageByType = async (req, res) => {
       {
         replacements: {
           imagePath,
-          aboutPageId,
         },
       }
     );
@@ -311,8 +309,8 @@ exports.getAboutPageData = async (req, res) => {
 
 exports.uploadImage = async (req, res) => {
   try {
-    const { id, imageType } = req.body; // Extract table name, record ID, and image type
-    const imageFile = req.file; // Uploaded image file
+    const { id, imageType } = req.body;
+    const imageFile = req.file;
     console.log(req.body);
     if (!id || !imageType) {
       return res
@@ -417,7 +415,7 @@ exports.insertMessageContent = async (req, res) => {
 
 // Insert into `faculty`
 exports.insertFaculty = async (req, res) => {
-  const { about_page_id, name, subject, image, alt } = req.body;
+  const { about_page_id, name, subject, alt } = req.body;
 
   if (!about_page_id || !name || !subject) {
     return res.status(400).json({ message: "Missing required fields." });
@@ -425,10 +423,10 @@ exports.insertFaculty = async (req, res) => {
 
   try {
     await sequelize.query(
-      `INSERT INTO faculty (about_page_id, name, subject, image, alt)
-       VALUES (:about_page_id, :name, :subject, :image, :alt)`,
+      `INSERT INTO faculty (about_page_id, name, subject, alt)
+       VALUES (:about_page_id, :name, :subject, :alt)`,
       {
-        replacements: { about_page_id, name, subject, image, alt },
+        replacements: { about_page_id, name, subject, alt },
       }
     );
 
@@ -474,6 +472,7 @@ exports.getAcademicsData = async (req, res) => {
         ap.title,
         ap.approach_heading AS approachHeading,
         ap.academics_features_title AS featuresTitle,
+        ap.seo_id AS seoid,
         sm.page_title AS seoPageTitle,
         sm.meta_description AS seoMetaDescription,
         sm.meta_keywords AS seoMetaKeywords,
@@ -535,6 +534,7 @@ exports.getAcademicsData = async (req, res) => {
       success: true,
       data: {
         seo: {
+          seo_id: academicPages[0].seoid,
           pageTitle: academicPages[0].seoPageTitle,
           metaDescription: academicPages[0].seoMetaDescription,
           metaKeywords: academicPages[0].seoMetaKeywords,
@@ -546,6 +546,7 @@ exports.getAcademicsData = async (req, res) => {
           twitterImage: academicPages[0].seoTwitterImage,
         },
         title: academicPages[0].title,
+        academicsPageId: academicPages[0].academicsPageId,
         approach: {
           heading: academicPages[0].approachHeading,
           description: descriptions.map((desc) => desc.content),
@@ -569,10 +570,80 @@ exports.getAcademicsData = async (req, res) => {
   }
 };
 
-// Import Sequelize instance
+exports.insertAcademicDescription = async (req, res) => {
+  const { academics_page_id, content } = req.body;
 
-// Controller function to get admissions page data
-// Import Sequelize instance
+  if (!academics_page_id || !content) {
+    return res.status(400).json({ message: "Missing required fields." });
+  }
+
+  try {
+    await sequelize.query(
+      `INSERT INTO academic_description (academics_page_id, content)
+       VALUES (:academics_page_id, :content)`,
+      {
+        replacements: { academics_page_id, content },
+      }
+    );
+
+    res.json({ message: "Academic description inserted successfully." });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Failed to insert academic description.", error });
+  }
+};
+
+exports.insertAcademicFeature = async (req, res) => {
+  const { academics_page_id, feature } = req.body;
+
+  if (!academics_page_id || !feature) {
+    return res.status(400).json({ message: "Missing required fields." });
+  }
+
+  try {
+    await sequelize.query(
+      `INSERT INTO academic_features (academics_page_id, feature)
+       VALUES (:academics_page_id, :feature)`,
+      {
+        replacements: { academics_page_id, feature },
+      }
+    );
+
+    res.json({ message: "Academic feature inserted successfully." });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Failed to insert academic feature.", error });
+  }
+};
+
+exports.insertAcademicProgram = async (req, res) => {
+  const { academics_page_id, program_id, title, content } = req.body;
+
+  if (!academics_page_id || !program_id || !title || !content) {
+    return res.status(400).json({ message: "Missing required fields." });
+  }
+
+  try {
+    await sequelize.query(
+      `INSERT INTO academic_programs (academics_page_id, program_id, title, content)
+       VALUES (:academics_page_id, :program_id, :title, :content)`,
+      {
+        replacements: { academics_page_id, program_id, title, content },
+      }
+    );
+
+    res.json({ message: "Academic program inserted successfully." });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(500)
+      .json({ message: "Failed to insert academic program.", error });
+  }
+};
 
 // Controller function to get academics page data
 exports.getAdmissionsPageData = async (req, res) => {
@@ -594,6 +665,7 @@ exports.getAdmissionsPageData = async (req, res) => {
         ap.application_description AS applicationDescription,
         ap.application_button_text AS applicationButtonText,
         ap.application_button_link AS applicationButtonLink,
+        ap.seo_id as seoId,
         sm.page_title AS seoPageTitle,
         sm.meta_description AS seoMetaDescription,
         sm.meta_keywords AS seoMetaKeywords,
@@ -617,7 +689,7 @@ exports.getAdmissionsPageData = async (req, res) => {
     // Fetch introduction paragraphs
     const [introductionParagraphs] = await sequelize.query(
       `
-      SELECT content
+      SELECT id,content
       FROM admission_introduction_paragraphs
       WHERE admissions_page_id = :admissionsPageId
     `,
@@ -629,7 +701,7 @@ exports.getAdmissionsPageData = async (req, res) => {
     // Fetch process steps
     const [processSteps] = await sequelize.query(
       `
-      SELECT step
+      SELECT id,step
       FROM admission_process_steps
       WHERE admissions_page_id = :admissionsPageId
     `,
@@ -641,7 +713,7 @@ exports.getAdmissionsPageData = async (req, res) => {
     // Fetch eligibility criteria
     const [eligibilityCriteria] = await sequelize.query(
       `
-      SELECT criteria
+      SELECT id,criteria
       FROM admission_eligibility
       WHERE admissions_page_id = :admissionsPageId
     `,
@@ -653,7 +725,7 @@ exports.getAdmissionsPageData = async (req, res) => {
     // Fetch important dates
     const [importantDates] = await sequelize.query(
       `
-      SELECT label, date
+      SELECT id,label, date
       FROM admission_important_dates
       WHERE admissions_page_id = :admissionsPageId
     `,
@@ -667,6 +739,7 @@ exports.getAdmissionsPageData = async (req, res) => {
       success: true,
       data: {
         seo: {
+          seoId: admissionsPages[0].seoId,
           pageTitle: admissionsPages[0].seoPageTitle,
           metaDescription: admissionsPages[0].seoMetaDescription,
           metaKeywords: admissionsPages[0].seoMetaKeywords,
@@ -678,6 +751,7 @@ exports.getAdmissionsPageData = async (req, res) => {
           twitterImage: admissionsPages[0].seoTwitterImage,
         },
         title: admissionsPages[0].title,
+        admissionsPageId: admissionsPageId,
         introduction: {
           heading: admissionsPages[0].introductionHeading,
           paragraphs: introductionParagraphs.map(
@@ -772,14 +846,14 @@ const sendEmailNotification = async (email, userId, password, formData) => {
   const transporter = nodemailer.createTransport({
     service: "Gmail",
     auth: {
-      user: "Socialmedia.mindga@gmail.com",
-      pass: "axnz makk abjp ombu",
+      user: "Socialmedia.induraes@gmail.com",
+      pass: "golc uxau ffjq wuov",
     },
   });
 
   const mailOptions = {
     from: "Socialmedia.mindga@gmail.com",
-    to: "shivambhatt2143@gmail.com",
+    to: "Induraenglishschool@gmail.com",
     subject: "Admission Form Submission",
     text: `
         name: ${formData.name},
@@ -820,6 +894,7 @@ exports.getContactPageData = async (req, res) => {
         sm.twitter_title AS twitterTitle, 
         sm.twitter_description AS twitterDescription, 
         sm.twitter_image AS twitterImage,
+        cp.seo_id AS seoid,
         cp.address, 
         cp.phone, 
         cp.email, 
@@ -841,6 +916,8 @@ exports.getContactPageData = async (req, res) => {
       success: true,
       data: {
         seo: {
+          seoid: contactPageData[0].seoid,
+          officeHours: contactPageData[0].officeHours,
           pageTitle: contactPageData[0].pageTitle,
           metaDescription: contactPageData[0].metaDescription,
           metaKeywords: contactPageData[0].metaKeywords,
@@ -909,12 +986,12 @@ const sendEmailNotificationContact = async (email) => {
     service: "Gmail",
     auth: {
       user: "Socialmedia.mindga@gmail.com",
-      pass: "axnz makk abjp ombu",
+      pass: "golc uxau ffjq wuov",
     },
   });
 
   const mailOptions = {
-    from: "Socialmedia.mindga@gmail.com",
+    from: "Socialmedia.induraes@gmail.com",
     to: email,
     subject: "Contact Form Submission",
     text: `Thank you for filling the contact form.`,
@@ -977,14 +1054,14 @@ exports.getGalleryData = async (req, res) => {
                  meta_keywords AS metaKeywords, og_title AS ogTitle, 
                  og_description AS ogDescription, og_image AS ogImage,
                  twitter_title AS twitterTitle, twitter_description AS twitterDescription, 
-                 twitter_image AS twitterImage
+                 twitter_image AS twitterImage, id as seoId
           FROM seo_metadata
           WHERE id = (SELECT seo_id FROM galleryPage WHERE id = :galleryPageId)
       `;
 
     // Fetch gallery items
     const galleryItemsQuery = `
-          SELECT galleryItemsSrc AS src, galleryItemsAlt AS alt, caption
+          SELECT galleryItemsSrc AS src, galleryItemsAlt AS alt, caption , id
           FROM galleryItems
           WHERE galleryPageId = :galleryPageId
       `;
@@ -1055,7 +1132,7 @@ exports.getNewsPageData = async (req, res) => {
                  meta_keywords AS metaKeywords, og_title AS ogTitle, 
                  og_description AS ogDescription, og_image AS ogImage,
                  twitter_title AS twitterTitle, twitter_description AS twitterDescription, 
-                 twitter_image AS twitterImage
+                 twitter_image AS twitterImage, id as seoId
           FROM seo_metadata
           WHERE id = (SELECT seo_id FROM news_event_page WHERE id = :id)
       `;
@@ -1161,7 +1238,7 @@ exports.getSchoolPageData = async (req, res) => {
                  meta_keywords AS metaKeywords, og_title AS ogTitle, 
                  og_description AS ogDescription, og_image AS ogImage,
                  twitter_title AS twitterTitle, twitter_description AS twitterDescription, 
-                 twitter_image AS twitterImage
+                 twitter_image AS twitterImage,id as seoId
           FROM seo_metadata
           WHERE id = (SELECT seo_id FROM school_policies WHERE id = :id)
       `;
@@ -1338,7 +1415,7 @@ exports.getHomePageData = async (req, res) => {
                  meta_keywords AS metaKeywords, og_title AS ogTitle, 
                  og_description AS ogDescription, og_image AS ogImage,
                  twitter_title AS twitterTitle, twitter_description AS twitterDescription, 
-                 twitter_image AS twitterImage
+                 twitter_image AS twitterImage, id as seoId
           FROM seo_metadata
           WHERE id = (SELECT seo_id FROM home_page WHERE id = :id)
       `;
@@ -1669,5 +1746,45 @@ exports.getFooterPageData = async (req, res) => {
       success: false,
       message: "An error occurred while fetching data.",
     });
+  }
+};
+
+exports.getData = async (req, res) => {
+  const tableName = req.query.tableName;
+
+  if (!tableName) {
+    return res.status(400).json({ message: "Invalid request payload." });
+  }
+
+  try {
+    // Update query
+    const query = `SELECT * FROM ${tableName}`;
+
+    // Execute the query
+    const [Result] = await sequelize.query(query, {
+      replacements: { tableName: tableName },
+    });
+    console.log(Result);
+
+    res.json({ data: Result });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to update the record.", error });
+  }
+};
+
+exports.getTables = async (req, res) => {
+  try {
+    // Update query
+    const query = `SHOW TABLES`;
+
+    // Execute the query
+    const [Result] = await sequelize.query(query);
+    console.log(Result);
+
+    res.json({ data: Result });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to update the record.", error });
   }
 };

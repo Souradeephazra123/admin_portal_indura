@@ -1,5 +1,5 @@
 const express = require("express");
 const aboutRoute = require("./aboutRoutes");
 const router = express.Router();
-router.use("/about", aboutRoute);
+router.use("/admin", aboutRoute);
 module.exports = router;

@@ -5,7 +5,8 @@ const path = require("path");
 const router = express.Router();
 
 router.post("/", About.uploadFullAboutData);
-router.get("/", About.getAboutPageData);
+
+router.get("/about", About.getAboutPageData);
 const multer = require("multer");
 
 const upload = multer({
@@ -24,13 +25,13 @@ const upload = multer({
 });
 
 router.post(
-  "/upload-image-og",
+  "/upload-image-seo",
   upload.single("image"), // Expecting a single file with field name 'image'
   About.uploadImageByType
 );
 
 router.post(
-  "/upload-images",
+  "/upload-image",
   upload.single("image"), // Expecting a single file with field name 'image'
   About.uploadImage
 );
@@ -42,6 +43,7 @@ router.post("/message-content", About.insertMessageContent);
 router.post("/faculty", About.insertFaculty);
 
 router.post("/about-points", About.insertAboutPoint);
+
 router.get("/academics", About.getAcademicsData);
 router.get("/admissions", About.getAdmissionsPageData);
 router.post("/admissions/form", About.handleAdmissionForm);
@@ -76,4 +78,10 @@ router.post("/footer", upload.single("image"), About.addFooter);
 router.post("/quick-links", About.addQuickLink);
 router.post("/social-media", About.addSocialMedia);
 router.get("/footer", About.getFooterPageData);
+router.get("/fetch-data", About.getData);
+router.get("/tables", About.getTables);
+
+router.post("/academic-description", About.insertAcademicDescription);
+router.post("/academic-feature", About.insertAcademicFeature);
+router.post("/academic-program", About.insertAcademicProgram);
 module.exports = router;
