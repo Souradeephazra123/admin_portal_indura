@@ -4,7 +4,7 @@ const About = require("../controllers/aboutController");
 const path = require("path");
 const router = express.Router();
 
-router.post("/", About.uploadFullAboutData);
+router.post("/about", About.uploadFullAboutData);
 
 router.get("/about", About.getAboutPageData);
 const multer = require("multer");

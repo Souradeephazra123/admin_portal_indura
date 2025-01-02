@@ -239,7 +239,16 @@ exports.getAboutPageData = async (req, res) => {
   try {
     // Fetch About Page Data
     const [aboutPageData] = await sequelize.query(`
-      SELECT ap.*, sm.*
+      SELECT ap.*, 
+      sm.page_title AS seoPageTitle,
+        sm.meta_description AS seoMetaDescription,
+        sm.meta_keywords AS seoMetaKeywords,
+        sm.og_title AS seoOgTitle,
+        sm.og_description AS seoOgDescription,
+        sm.og_image AS seoOgImage,
+        sm.twitter_title AS seoTwitterTitle,
+        sm.twitter_description AS seoTwitterDescription,
+        sm.twitter_image AS seoTwitterImage
       FROM about_page ap
       LEFT JOIN seo_metadata sm ON ap.seo_id = sm.id
     `);
@@ -249,6 +258,7 @@ exports.getAboutPageData = async (req, res) => {
     }
 
     const aboutPageId = aboutPageData[0]?.id;
+    console.log(aboutPageId);
 
     // Fetch Why Indura Points
     const [whyInduraPoints] = await sequelize.query(
