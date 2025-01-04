@@ -1,6 +1,21 @@
-Create database admin_crm_indura;
-use admin_portal_indura;
-CREATE TABLE `about_page` (
+
+use hemsida_admin_indura;
+CREATE TABLE seo_metadata (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `page_title` varchar(255) DEFAULT NULL,
+  `meta_description` text,
+  `meta_keywords` text,
+  `og_title` varchar(255) DEFAULT NULL,
+  `og_description` text,
+  `og_image` text,
+  `twitter_title` varchar(255) DEFAULT NULL,
+  `twitter_description` text,
+  `twitter_image` text,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `id` (`id`)
+);
+
+CREATE TABLE about_page (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `seo_id` int DEFAULT NULL,
   `hero_title` varchar(255) DEFAULT NULL,
@@ -16,14 +31,14 @@ CREATE TABLE `about_page` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 );
-CREATE TABLE `about_points` (
+CREATE TABLE about_points (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `about_page_id` int DEFAULT NULL,
   `point` text,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 );
-CREATE TABLE `faculty` (
+CREATE TABLE faculty (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `about_page_id` int DEFAULT NULL,
   `name` varchar(255) DEFAULT NULL,
@@ -33,7 +48,7 @@ CREATE TABLE `faculty` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 );
-CREATE TABLE `messages` (
+CREATE TABLE messages (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `about_page_id` int DEFAULT NULL,
   `role` varchar(50) DEFAULT NULL,
@@ -46,14 +61,14 @@ CREATE TABLE `messages` (
   UNIQUE KEY `id` (`id`),
   CONSTRAINT `messages_chk_1` CHECK ((`role` in (_utf8mb4'Principal',_utf8mb4'Chairperson')))
 );
-CREATE TABLE `message_content` (
+CREATE TABLE message_content (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `message_id` int DEFAULT NULL,
   `content_line` text,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 );
-CREATE TABLE `academics_page` (
+CREATE TABLE academics_page (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `title` varchar(255) DEFAULT NULL,
   `approach_heading` varchar(255) DEFAULT NULL,
@@ -64,18 +79,18 @@ CREATE TABLE `academics_page` (
 );
 CREATE TABLE academic_description (
     id SERIAL PRIMARY KEY,
-    academics_page_id INT REFERENCES academics_page(id) ON DELETE CASCADE,
+    academics_page_id INT,
     content TEXT
 );
 CREATE TABLE academic_features (
     id SERIAL PRIMARY KEY,
-    academics_page_id INT REFERENCES academics_page(id) ON DELETE CASCADE,
+    academics_page_id INT,
     feature TEXT
 );
 
 CREATE TABLE academic_programs (
     id SERIAL PRIMARY KEY,
-    academics_page_id INT REFERENCES academics_page(id) ON DELETE CASCADE,
+    academics_page_id INT,
     program_id VARCHAR(50),
     title VARCHAR(255),
     content TEXT
@@ -137,7 +152,7 @@ COMMIT;
 CREATE TABLE admissions_page (
     id SERIAL PRIMARY KEY,
     title VARCHAR(255), -- Admissions page title
-    seo_id INT REFERENCES seo_metadata(id) ON DELETE CASCADE, -- Foreign key linking to SEO metadata
+    seo_id INT, -- Foreign key linking to SEO metadata
     introduction_heading VARCHAR(255), -- Introduction heading
     introduction_button_text VARCHAR(255), -- Button text in the introduction section
     introduction_button_link VARCHAR(255), -- Button link in the introduction section
@@ -154,25 +169,25 @@ CREATE TABLE admissions_page (
 
 CREATE TABLE admission_introduction_paragraphs (
     id SERIAL PRIMARY KEY,
-    admissions_page_id INT REFERENCES admissions_page(id) ON DELETE CASCADE,
+    admissions_page_id INT,
     content TEXT
 );
 
 CREATE TABLE admission_process_steps (
     id SERIAL PRIMARY KEY,
-    admissions_page_id INT REFERENCES admissions_page(id) ON DELETE CASCADE,
+    admissions_page_id INT,
     step TEXT
 );
 
 CREATE TABLE admission_eligibility (
     id SERIAL PRIMARY KEY,
-    admissions_page_id INT REFERENCES admissions_page(id) ON DELETE CASCADE,
+    admissions_page_id INT,
     criteria TEXT
 );
 
 CREATE TABLE admission_important_dates (
     id SERIAL PRIMARY KEY,
-    admissions_page_id INT REFERENCES admissions_page(id) ON DELETE CASCADE,
+    admissions_page_id INT,
     label VARCHAR(255),
     date DATE
 );
@@ -291,7 +306,7 @@ CREATE TABLE admissions (
 );
 
 
-CREATE TABLE `contact_page_data` (
+CREATE TABLE contact_page_data (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `address` varchar(480) DEFAULT NULL,
   `phone` varchar(255) DEFAULT NULL,
@@ -350,7 +365,7 @@ VALUES (
 
 COMMIT;
 
-CREATE TABLE `contactpage` (
+CREATE TABLE contactpage (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `name` varchar(480) DEFAULT NULL,
   `email` varchar(255) DEFAULT NULL,
@@ -361,13 +376,13 @@ CREATE TABLE `contactpage` (
 );
 
 
-CREATE TABLE `galleryPage` (
+CREATE TABLE galleryPage (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `seo_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 );
-CREATE TABLE `galleryItems` (
+CREATE TABLE galleryItem (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `galleryPageId` int default NULL,
   `galleryItemsSrc` varchar(480) DEFAULT NULL,
@@ -409,13 +424,13 @@ VALUES (
 );
 
 
-CREATE TABLE `news_event_page` (
+CREATE TABLE news_event_page (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `seo_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 );
-CREATE TABLE `news_event_items` (
+CREATE TABLE news_event_items (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `news_event_page_id` int default NULL,
   `title` varchar(480) DEFAULT NULL,
@@ -427,7 +442,7 @@ CREATE TABLE `news_event_items` (
 );
 INSERT INTO seo_metadata (
     page_title, 
-    meta_description, 
+    meta_description,
     meta_keywords, 
     og_title, 
     og_description, 
@@ -456,13 +471,14 @@ VALUES (
     @seo_id
 );
 
-CREATE TABLE `school_policies` (
+CREATE TABLE school_policies (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `seo_id` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 );
-CREATE TABLE `schoolInfo` (
+
+CREATE TABLE schoolInfo (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `school_policies_id` int default NULL,
   `label` varchar(480) DEFAULT NULL,
@@ -470,7 +486,8 @@ CREATE TABLE `schoolInfo` (
    PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 );
-CREATE TABLE `affiliationDocuments` (
+
+CREATE TABLE affiliationDocuments (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `school_policies_id` int default NULL,
   `title` varchar(480) DEFAULT NULL,
@@ -510,7 +527,7 @@ VALUES (
     @seo_id
 );
 
-CREATE TABLE `home_page` (
+CREATE TABLE home_page (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `welcome_title` varchar(480) NULL,
   `welcome_description` varchar(480) NULL,
@@ -518,7 +535,7 @@ CREATE TABLE `home_page` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 );
-CREATE TABLE `slide_items` (
+CREATE TABLE slide_items (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `home_page_id` int default NULL,
   `image` varchar(480) default NULL,
@@ -527,7 +544,7 @@ CREATE TABLE `slide_items` (
    PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 );
-CREATE TABLE `newsEvents` (
+CREATE TABLE newsEvents (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `home_page_id` int default NULL,
   `title` varchar(480) DEFAULT NULL,
@@ -536,7 +553,7 @@ CREATE TABLE `newsEvents` (
    PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 );
-CREATE TABLE `recentActivities` (
+CREATE TABLE recentActivities (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `home_page_id` int default NULL,
   `name` varchar(480) default NULL,
@@ -546,7 +563,7 @@ CREATE TABLE `recentActivities` (
    PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 );
-CREATE TABLE `alumniAchievers` (
+CREATE TABLE alumniAchievers (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `home_page_id` int default NULL,
   `name` varchar(480) default NULL,
@@ -591,14 +608,14 @@ VALUES (
     @seo_id
 );
 
-CREATE TABLE `header` (
+CREATE TABLE header (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `logo_src` varchar(480) NULL,
   `logo_alt` varchar(480) NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 );
-CREATE TABLE `header_nav` (
+CREATE TABLE header_nav (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `header_page_id` int default NULL,
   `name` varchar(480) default NULL,
@@ -607,7 +624,7 @@ CREATE TABLE `header_nav` (
   UNIQUE KEY `id` (`id`)
 );
 
-CREATE TABLE `footer` (
+CREATE TABLE footer (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `schoolName` varchar(480) NULL,
   `owner` varchar(480) NULL,
@@ -621,7 +638,7 @@ CREATE TABLE `footer` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 );
-CREATE TABLE `quickLinks` (
+CREATE TABLE quickLinks (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `footer_id` int default NULL,
   `name` varchar(480) default NULL,
@@ -629,7 +646,7 @@ CREATE TABLE `quickLinks` (
    PRIMARY KEY (`id`),
   UNIQUE KEY `id` (`id`)
 );
-CREATE TABLE `socialMedia` (
+CREATE TABLE socialMedia (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `footer_id` int default NULL,
   `label` varchar(480) default NULL,

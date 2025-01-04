@@ -857,12 +857,12 @@ const sendEmailNotification = async (email, userId, password, formData) => {
     service: "Gmail",
     auth: {
       user: "Socialmedia.induraes@gmail.com",
-      pass: "golc uxau ffjq wuov",
+      pass: "vqjh ngrz iegd gdhu",
     },
   });
 
   const mailOptions = {
-    from: "Socialmedia.mindga@gmail.com",
+    from: "Socialmedia.induraes@gmail.com",
     to: "Induraenglishschool@gmail.com",
     subject: "Admission Form Submission",
     text: `
@@ -995,8 +995,8 @@ const sendEmailNotificationContact = async (email) => {
   const transporter = nodemailer.createTransport({
     service: "Gmail",
     auth: {
-      user: "Socialmedia.mindga@gmail.com",
-      pass: "golc uxau ffjq wuov",
+      user: "Socialmedia.induraes@gmail.com",
+      pass: "vqjh ngrz iegd gdhu",
     },
   });
 
