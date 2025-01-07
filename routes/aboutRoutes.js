@@ -84,4 +84,8 @@ router.get("/tables", About.getTables);
 router.post("/academic-description", About.insertAcademicDescription);
 router.post("/academic-feature", About.insertAcademicFeature);
 router.post("/academic-program", About.insertAcademicProgram);
+
+router.post("/login", About.login);
+
+router.post("/register", About.register);
 module.exports = router;
