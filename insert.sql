@@ -1,4 +1,12 @@
-CREATE TABLE `contact` (
+
+use hemsida_admin_indura;
+CREATE TABLE users (
+    `id` INT AUTO_INCREMENT PRIMARY KEY,
+     `email` VARCHAR(480),
+    `password` VARCHAR(480),
+  UNIQUE KEY `id` (`id`)
+);
+CREATE TABLE seo_metadata (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `email` varchar(480) DEFAULT NULL,
   `phone` varchar(480) DEFAULT NULL,

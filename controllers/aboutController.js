@@ -5,6 +5,8 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { sequelize } = require("../db");
 const nodemailer = require("nodemailer");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -1885,6 +1887,89 @@ exports.getTables = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Failed to update the record.", error });
+  }
+};
+
+exports.register = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ error: "Email and password are required." });
+    }
+
+    // Hash the password using bcrypt
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insert into the database
+    await sequelize.query(
+      `INSERT INTO users (email, password) VALUES (:email, :password)`,
+      {
+        replacements: {
+          email,
+          password: hashedPassword,
+        },
+      }
+    );
+
+    res.json({
+      message: "User registered successfully.",
+    });
+  } catch (error) {
+    if (error.original && error.original.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({ error: "Email already registered." });
+    }
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+const JWT_SECRET = "wdiuhqwihjadhuhewdhwehsidhiuwhiuncd";
+
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ error: "Email and password are required." });
+    }
+
+    // Find the user in the database
+    const [results] = await sequelize.query(
+      `SELECT * FROM users WHERE email = :email`,
+      {
+        replacements: { email },
+      }
+    );
+
+    if (results.length === 0) {
+      return res.status(400).json({ error: "Invalid email or password." });
+    }
+
+    const user = results[0];
+
+    // Check the password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(400).json({ error: "Invalid email or password." });
+    }
+
+    // Generate JWT
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    res.json({
+      message: "Login successful.",
+      token,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
   }
 };
 
