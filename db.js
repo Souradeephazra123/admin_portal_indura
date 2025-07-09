@@ -1,16 +1,11 @@
 const { Sequelize } = require("sequelize");
 
 // Replace the placeholders with your actual database configuration
-const sequelize = new Sequelize(
-  "hemsida_admin_indura",
-  "hemsida_admin_user",
-  "yashvarshney",
-  {
-    host: "localhost", // Replace with your host (e.g., localhost or a remote IP)
-    dialect: "mysql", // Use your database dialect (mysql, postgres, sqlite, etc.)
-    logging: false, // Set to true for detailed query logs
-  }
-);
+const sequelize = new Sequelize("rise_education", "root", "password", {
+  host: "localhost", // Replace with your host (e.g., localhost or a remote IP)
+  dialect: "mysql", // Use your database dialect (mysql, postgres, sqlite, etc.)
+  logging: false, // Set to true for detailed query logs
+});
 
 // Test the connection
 const connectDB = async () => {

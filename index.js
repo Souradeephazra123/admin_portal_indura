@@ -4,11 +4,13 @@ const routes = require("./routes");
 const path = require("path");
 const swaggerUi = require("swagger-ui-express");
 const swaggerSpecs = require("./swagger");
+const cors = require("cors");
 
 const app = express();
 const PORT = 5500;
-
+app.use(cors());
 app.use(bodyParser.json());
+
 app.use(
   "/uploads/images",
   express.static(path.join(__dirname, "uploads/images"))

@@ -1,22 +1,138 @@
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
+const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const { sequelize } = require("../db");
 const nodemailer = require("nodemailer");
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "uploads/images"); // Directory where images will be saved
+    cb(null, "uploads/images/"); // Directory to store images
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(
-      null,
-      `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`
-    );
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname)); // Unique file name
   },
 });
-const upload = multer({ storage });
+
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    const fileTypes = /jpeg|jpg|png/;
+    const extname = fileTypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
+    const mimeType = fileTypes.test(file.mimetype);
+
+    if (extname && mimeType) {
+      return cb(null, true);
+    } else {
+      cb(new Error("Images only!"));
+    }
+  },
+}).single("image");
+
+// PDF upload configuration
+const pdfStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/documents/"); // Directory for PDFs
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const pdfUpload = multer({
+  storage: pdfStorage,
+  fileFilter: (req, file, cb) => {
+    const fileTypes = /pdf/;
+    const extname = fileTypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
+    const mimeType = file.mimetype === 'application/pdf';
+
+    if (extname && mimeType) {
+      return cb(null, true);
+    } else {
+      cb(new Error("PDF files only!"));
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+}).single("pdf");
+
+// Universal file upload configuration
+const universalStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    // Choose destination based on file type
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, "uploads/images/");
+    } else if (file.mimetype === 'application/pdf') {
+      cb(null, "uploads/documents/");
+    } else {
+      cb(null, "uploads/other/");
+    }
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const universalUpload = multer({
+  storage: universalStorage,
+  fileFilter: (req, file, cb) => {
+    // Allow images and PDFs
+    const allowedTypes = /jpeg|jpg|png|pdf/;
+    const extname = allowedTypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
+    const mimeType = file.mimetype === 'application/pdf' || 
+                    file.mimetype.startsWith('image/');
+
+    if (extname && mimeType) {
+      return cb(null, true);
+    } else {
+      cb(new Error("Only images (JPEG, JPG, PNG) and PDF files are allowed!"));
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+}).single("file");
+
+// Universal file upload handler
+exports.uploadUniversalFile = async (req, res) => {
+  try {
+    const { fileType, description } = req.body;
+    const uploadedFile = req.file;
+
+    if (!fileType) {
+      return res.status(400).json({ error: "File type is required" });
+    }
+
+    if (!uploadedFile) {
+      return res.status(400).json({ error: "File is required" });
+    }
+
+    // Construct file path
+    const filePath = uploadedFile.path.replace(/\\/g, '/');
+
+    res.json({
+      message: `File uploaded successfully`,
+      filePath,
+      originalName: uploadedFile.originalname,
+      size: uploadedFile.size,
+      mimeType: uploadedFile.mimetype,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
 
 exports.uploadImageByType = async (req, res) => {
   try {
@@ -367,34 +483,6 @@ exports.uploadImage = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: error.message });
-  }
-};
-
-exports.updateRecord = async (req, res) => {
-  const { tableName, id, updates } = req.body;
-
-  if (!tableName || !id || !updates || typeof updates !== "object") {
-    return res.status(400).json({ message: "Invalid request payload." });
-  }
-
-  try {
-    // Build the SET clause dynamically
-    const setClause = Object.keys(updates)
-      .map((key) => `${key} = :${key}`)
-      .join(", ");
-
-    // Update query
-    const query = `UPDATE ${tableName} SET ${setClause} WHERE id = :id`;
-
-    // Execute the query
-    await sequelize.query(query, {
-      replacements: { ...updates, id },
-    });
-
-    res.json({ message: `Record in ${tableName} updated successfully.` });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Failed to update the record.", error });
   }
 };
 
@@ -1419,7 +1507,7 @@ exports.addAlumniAchiever = async (req, res) => {
 
 exports.getHomePageData = async (req, res) => {
   try {
-    // Fetch SEO metadata for galleryPage
+    // Fetch SEO metadata for homePage
     const seoQuery = `
           SELECT page_title AS pageTitle, meta_description AS metaDescription, 
                  meta_keywords AS metaKeywords, og_title AS ogTitle, 
@@ -1434,6 +1522,7 @@ exports.getHomePageData = async (req, res) => {
       SELECT *
       FROM home_page
   `;
+
     const slide_items = `
           SELECT *
           FROM slide_items
@@ -1796,5 +1885,877 @@ exports.getTables = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Failed to update the record.", error });
+  }
+};
+
+exports.updateRecord = async (req, res) => {
+  const { tableName, id, updates } = req.body;
+
+  if (!tableName || !id || !updates || typeof updates !== "object") {
+    return res.status(400).json({ message: "Invalid request payload." });
+  }
+
+  try {
+    // Build the SET clause dynamically
+    const setClause = Object.keys(updates)
+      .map((key) => `${key} = :${key}`)
+      .join(", ");
+
+    // Update query
+    const query = `UPDATE ${tableName} SET ${setClause} WHERE id = :id`;
+
+    // Execute the query
+    await sequelize.query(query, {
+      replacements: { ...updates, id },
+    });
+
+    res.json({ message: `Record in ${tableName} updated successfully.` });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to update the record.", error });
+  }
+};
+
+exports.getHomePageData = async (req, res) => {
+  try {
+    // Fetch SEO metadata for homePage
+    const metadata = `
+          SELECT title, description
+          FROM metadata
+          WHERE id = (SELECT metadata_id FROM hero WHERE id = :id)
+      `;
+    const metadatakeywords = `
+          SELECT * 
+FROM metadata_keywords 
+WHERE metadata_id IN (SELECT metadata_id FROM hero WHERE id = :id);
+
+      `;
+
+    // Fetch homePage main content
+    const hero = `
+          SELECT *
+          FROM hero
+          WHERE id = :id
+      `;
+    const hero_image = `
+          SELECT *
+          FROM image_hero_home
+      `;
+
+    // Fetch aboutContent descriptions
+    const heroSection_buttons = `
+          SELECT *
+          FROM heroSection_buttons
+          WHERE hero_id = :id
+      `;
+
+    // Fetch whyChooseUsContent features
+    const features = `
+          SELECT *
+          FROM features
+          WHERE hero_id = :id
+      `;
+
+    // Fetch empoweringStudentsContent programs
+    const programs = `
+          SELECT *
+          FROM programs
+          WHERE hero_id = :id
+      `;
+
+    const id = req.params.homePageId || 1; // Default to 1 if not provided
+
+    // Execute queries
+    const [metadataResults] = await sequelize.query(metadata, {
+      replacements: { id },
+    });
+    const metadatakeywordsResults = await sequelize.query(metadatakeywords, {
+      replacements: { id },
+    });
+
+    const [heroResults] = await sequelize.query(hero, {
+      replacements: { id },
+    });
+    const [heroImageResults] = await sequelize.query(hero_image, {
+      replacements: { id },
+    });
+    const [heroSectionbuttonsResults] = await sequelize.query(
+      heroSection_buttons,
+      {
+        replacements: { id },
+      }
+    );
+    console.log(heroSectionbuttonsResults);
+    const [featuresResult] = await sequelize.query(features, {
+      replacements: { id },
+    });
+    const [programsResult] = await sequelize.query(programs, {
+      replacements: { id },
+    });
+
+    // Response
+    res.json({
+      success: true,
+      data: {
+        seo: metadataResults.length ? metadataResults : null,
+        seo_keyowrds: metadatakeywordsResults.length
+          ? metadatakeywordsResults[0]
+          : null,
+        hero: heroResults.length ? heroResults : null,
+        hero_image: heroImageResults.length ? heroImageResults : null,
+        heroSection_buttons: heroSectionbuttonsResults.length
+          ? heroSectionbuttonsResults
+          : null,
+        features: featuresResult,
+        programs: programsResult,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching data.",
+    });
+  }
+};
+
+exports.addHeroWithMetadata = async (req, res) => {
+  const t = await sequelize.transaction(); // Start a transaction
+  try {
+    const {
+      metadata_title,
+      metadata_description,
+      keywords_text, // This should be an array of keywords
+      hero_title,
+      subtitle,
+      testimonialSection_title,
+      testimonialSection_description,
+      join_us_title,
+      join_us_description,
+      join_us_qoute,
+    } = req.body;
+
+    if (
+      !metadata_title ||
+      !metadata_description ||
+      !keywords_text?.length ||
+      !hero_title
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Missing required fields or invalid data." });
+    }
+
+    // Insert into metadata
+    const [metadataResult] = await sequelize.query(
+      `INSERT INTO metadata (title, description) VALUES (:metadata_title, :metadata_description)`,
+      {
+        replacements: { metadata_title, metadata_description },
+        transaction: t,
+      }
+    );
+
+    const metadata_id = metadataResult; // Get the inserted metadata ID
+
+    // Insert multiple keywords into metadata_keywords
+    const keywordInsertPromises = keywords_text.map((keyword) => {
+      return sequelize.query(
+        `INSERT INTO metadata_keywords (keywords_text, metadata_id) VALUES (:keywords_text, :metadata_id)`,
+        {
+          replacements: { keywords_text: keyword, metadata_id },
+          transaction: t,
+        }
+      );
+    });
+
+    await Promise.all(keywordInsertPromises); // Execute all keyword inserts concurrently
+
+    // Insert into hero
+    await sequelize.query(
+      `INSERT INTO hero (title, metadata_id, subtitle, testimonialSection_title, testimonialSection_description, join_us_title, join_us_description,join_us_qoute) 
+       VALUES (:hero_title, :metadata_id, :subtitle, :testimonialSection_title, :testimonialSection_description, :join_us_title,:join_us_description,:join_us_qoute)`,
+      {
+        replacements: {
+          hero_title,
+          metadata_id,
+          subtitle,
+          testimonialSection_title,
+          testimonialSection_description,
+          join_us_title,
+          join_us_description,
+          join_us_qoute,
+        },
+        transaction: t,
+      }
+    );
+
+    // Commit the transaction
+    await t.commit();
+
+    res.json({
+      message:
+        "Hero section with metadata and multiple keywords added successfully",
+    });
+  } catch (error) {
+    await t.rollback(); // Rollback if any step fails
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+exports.addHeroButton = async (req, res) => {
+  try {
+    const { text, hero_id, link } = req.body;
+    console.log(text, hero_id, link);
+
+    if (!text || !hero_id) {
+      return res.status(400).json({ error: "Missing required fields." });
+    }
+
+    await sequelize.query(
+      `INSERT INTO heroSection_buttons (text, hero_id, link) VALUES (:text, :hero_id, :link)`,
+      {
+        replacements: { text, hero_id, link },
+      }
+    );
+
+    res.json({ message: "Hero button added successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+exports.addFeature = async (req, res) => {
+  try {
+    const { title, hero_id, description } = req.body;
+    console.log(title, hero_id, description);
+    if (!title || !hero_id) {
+      return res.status(400).json({ error: "Missing required fields." });
+    }
+
+    await sequelize.query(
+      `INSERT INTO features (title, hero_id, description) VALUES (:title, :hero_id, :description)`,
+      {
+        replacements: { title, hero_id, description },
+      }
+    );
+
+    res.json({ message: "Feature added successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+exports.addProgram = async (req, res) => {
+  try {
+    const { name, hero_id, description } = req.body;
+
+    if (!name || !hero_id) {
+      return res.status(400).json({ error: "Missing required fields." });
+    }
+
+    await sequelize.query(
+      `INSERT INTO programs (name, hero_id, description) VALUES (:name, :hero_id, :description)`,
+      {
+        replacements: { name, hero_id, description },
+      }
+    );
+
+    res.json({ message: "Program added successfully" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+exports.updateheroImage = async (req, res) => {
+  try {
+    // Use Multer to upload the image
+    upload(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ error: err.message });
+      }
+
+      const { id } = req.body;
+
+      // Get the uploaded file path
+      const imagePath = req.file
+        ? `/uploads/images/${req.file.filename}`
+        : null;
+
+      if (!imagePath) {
+        return res.status(400).json({ error: "Image upload failed." });
+      }
+
+      // Update the image column in the database
+      if (id) {
+        await sequelize.query(
+          `UPDATE image_hero_home
+           SET image_url = :imagePath 
+           WHERE id = :id`,
+          {
+            replacements: { imagePath, id },
+          }
+        );
+      } else {
+        await sequelize.query(
+          `INSERT INTO image_hero_home (image_url) 
+VALUES (:imagePath);
+           `,
+          {
+            replacements: { imagePath },
+          }
+        );
+      }
+
+      res.json({ message: `Image successfully updated.` });
+    });
+  } catch (error) {
+    console.error("Error updating image:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getAboutPageData = async (req, res) => {
+  try {
+    // Fetch SEO metadata for homePage
+    const metadata = `
+          SELECT title, description
+          FROM metadata
+          WHERE id = (SELECT metadata_id FROM whoweare WHERE id = :id)
+      `;
+    const metadatakeywords = `
+          SELECT * 
+FROM metadata_keywords 
+WHERE metadata_id IN (SELECT metadata_id FROM whoweare WHERE id = :id);
+
+      `;
+
+    // Fetch homePage main content
+    const hero = `
+          SELECT *
+          FROM whoweare
+          WHERE id = :id
+      `;
+
+    // Fetch aboutContent descriptions
+    const heroSection_buttons = `
+          SELECT *
+          FROM ValuesTable
+          WHERE whoweare_id = :id
+      `;
+
+    // Fetch whyChooseUsContent features
+    const features = `
+          SELECT *
+          FROM whoweare_faculty
+          WHERE whoweare_id = :id
+      `;
+    const whoweare_app = `
+          SELECT *
+          FROM whoweare_ourApproach
+      `;
+
+    // Fetch empoweringStudentsContent programs
+
+    const id = req.params.homePageId || 1; // Default to 1 if not provided
+
+    // Execute queries
+    const [metadataResults] = await sequelize.query(metadata, {
+      replacements: { id },
+    });
+    const metadatakeywordsResults = await sequelize.query(metadatakeywords, {
+      replacements: { id },
+    });
+    console.log(metadatakeywordsResults);
+    const [whoweareResults] = await sequelize.query(hero, {
+      replacements: { id },
+    });
+    const [whowearevaluesResults] = await sequelize.query(heroSection_buttons, {
+      replacements: { id },
+    });
+    const [whoweare_facultyResult] = await sequelize.query(features, {
+      replacements: { id },
+    });
+
+    const [whoweare_appResult] = await sequelize.query(whoweare_app);
+
+    // Response
+    res.json({
+      success: true,
+      data: {
+        seo: metadataResults,
+        seo_keyowrds: metadatakeywordsResults,
+
+        whoweare: whoweareResults,
+        whowearevalues: whowearevaluesResults,
+
+        whoweare_faculty: whoweare_facultyResult,
+        whoweare_app: whoweare_appResult,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching data.",
+    });
+  }
+};
+
+exports.updateWhoWeAreImage = async (req, res) => {
+  try {
+    // Use Multer to upload the image
+    upload(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ error: err.message });
+      }
+
+      const { id } = req.body;
+      if (!id) {
+        return res.status(400).json({ error: "Missing required fields." });
+      }
+
+      // Get the uploaded file path
+      const imagePath = req.file
+        ? `/uploads/images/${req.file.filename}`
+        : null;
+
+      if (!imagePath) {
+        return res.status(400).json({ error: "Image upload failed." });
+      }
+
+      // Update the image column in the database
+
+      await sequelize.query(
+        `UPDATE whoweare
+           SET image = :imagePath 
+           WHERE id = :id`,
+        {
+          replacements: { imagePath, id },
+        }
+      );
+
+      res.json({ message: `Image successfully updated.` });
+    });
+  } catch (error) {
+    console.error("Error updating image:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+exports.addwhoweareWithMetadata = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const {
+      metadata_title,
+      metadata_description,
+      keywords_text,
+      description,
+      mission,
+      additionalMission,
+      joinus_title,
+      joinus_description,
+    } = req.body;
+
+    console.log(req.body);
+    if (!metadata_title || !metadata_description || !keywords_text?.length) {
+      return res
+        .status(400)
+        .json({ error: "Missing required fields or invalid data." });
+    }
+
+    // Insert into metadata
+    const [metadataResult] = await sequelize.query(
+      `INSERT INTO metadata (title, description) VALUES (:metadata_title, :metadata_description)`,
+      {
+        replacements: { metadata_title, metadata_description },
+        transaction: t,
+      }
+    );
+
+    const metadata_id = metadataResult;
+
+    // Insert multiple keywords into metadata_keywords
+    const keywordInsertPromises = keywords_text.map((keyword) => {
+      return sequelize.query(
+        `INSERT INTO metadata_keywords (keywords_text, metadata_id) VALUES (:keywords_text, :metadata_id)`,
+        {
+          replacements: { keywords_text: keyword, metadata_id },
+          transaction: t,
+        }
+      );
+    });
+
+    await Promise.all(keywordInsertPromises); // Execute all keyword inserts concurrently
+
+    // Insert into hero
+    await sequelize.query(
+      `INSERT INTO whoweare (description, metadata_id, mission, additionalMission, joinus_title, joinus_description) 
+       VALUES (:description, :metadata_id, :mission, :additionalMission, :joinus_title, :joinus_description)`,
+      {
+        replacements: {
+          description,
+          metadata_id,
+          mission,
+          additionalMission,
+          joinus_title: joinus_title, // Ensure correct key
+          joinus_description: joinus_description, // Ensure correct key
+        },
+        transaction: t,
+      }
+    );
+
+    // Commit the transaction
+    await t.commit();
+
+    res.json({
+      message:
+        "Whoweare section with metadata and multiple keywords added successfully",
+    });
+  } catch (error) {
+    await t.rollback(); // Rollback if any step fails
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.addValuesTable = async (req, res) => {
+  try {
+    upload(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ error: err.message });
+      }
+
+      const { id, title, whoweare_id, description } = req.body;
+      if (!title || !whoweare_id) {
+        return res.status(400).json({ error: "Missing required fields." });
+      }
+
+      // Get the uploaded file path
+      const imagePath = req.file
+        ? `/uploads/images/${req.file.filename}`
+        : null;
+
+      if (!imagePath) {
+        return res.status(400).json({ error: "Image upload failed." });
+      }
+
+      await sequelize.query(
+        `INSERT INTO ValuesTable (title, whoweare_id, description, image) VALUES (:title, :whoweare_id, :description, :image)`,
+        {
+          replacements: { title, whoweare_id, description, image: imagePath },
+        }
+      );
+
+      res.json({ message: "Values added successfully" });
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.whoweare_app = async (req, res) => {
+  try {
+    upload(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ error: err.message });
+      }
+
+      const { id, title, description } = req.body;
+      if (!title) {
+        return res.status(400).json({ error: "Missing required fields." });
+      }
+
+      // Get the uploaded file path
+      const imagePath = req.file
+        ? `/uploads/images/${req.file.filename}`
+        : null;
+
+      await sequelize.query(
+        `INSERT INTO whoweare_ourApproach (Title, Description, image) VALUES (:title, :description, :image)`,
+        {
+          replacements: { title, description, image: imagePath },
+        }
+      );
+
+      res.json({ message: "whoweare ourApproach added successfully" });
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+exports.whoweare_faculty = async (req, res) => {
+  try {
+    upload(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ error: err.message });
+      }
+
+      const { whoweare_id, name, role } = req.body;
+
+      if (!whoweare_id || !name || !role) {
+        return res.status(400).json({ error: "Missing required fields." });
+      }
+
+      // Get the uploaded file path
+      const imagePath = req.file
+        ? `/uploads/images/${req.file.filename}`
+        : null;
+
+      // Insert the data into the database
+      await sequelize.query(
+        `INSERT INTO whoweare_faculty
+         (whoweare_id, name, role, image) 
+         VALUES (:whoweare_id, :name, :role, :image)`,
+        {
+          replacements: {
+            whoweare_id,
+            name,
+            role,
+            image: imagePath, // Ensure this is correctly assigned
+          },
+        }
+      );
+
+      res.json({ message: "Whoweare_faculty added successfully" });
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+exports.updatewhoweareImage = async (req, res) => {
+  try {
+    // Use Multer to upload the image
+    upload(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ error: err.message });
+      }
+
+      const { whoweare_id, imageField } = req.body;
+
+      if (!whoweare_id || !imageField) {
+        return res.status(400).json({ error: "Invalid id or imageField." });
+      }
+
+      // Get the uploaded file path
+      const imagePath = req.file
+        ? `/uploads/images/${req.file.filename}`
+        : null;
+
+      if (!imagePath) {
+        return res.status(400).json({ error: "Image upload failed." });
+      }
+
+      // Update the image column in the database
+      await sequelize.query(
+        `UPDATE whoweare 
+         SET ${imageField} = :imagePath 
+         WHERE id = :whoweare_id`,
+        {
+          replacements: { imagePath, whoweare_id },
+        }
+      );
+
+      res.json({ message: `Image successfully updated in ${imageField}.` });
+    });
+  } catch (error) {
+    console.error("Error updating activity image:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+exports.updatemilestoneImage = async (req, res) => {
+  try {
+    // Use Multer to upload the image
+    upload(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ error: err.message });
+      }
+
+      const { id } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: "Invalid id." });
+      }
+
+      // Get the uploaded file path
+      const imagePath = req.file
+        ? `/uploads/images/${req.file.filename}`
+        : null;
+
+      if (!imagePath) {
+        return res.status(400).json({ error: "Image upload failed." });
+      }
+
+      // Update the image column in the database
+      await sequelize.query(
+        `UPDATE milestonesContent_milestones
+         SET image = :imagePath 
+         WHERE id = :id`,
+        {
+          replacements: { imagePath, id },
+        }
+      );
+
+      res.json({ message: `Image successfully updated.` });
+    });
+  } catch (error) {
+    console.error("Error updating image:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updateleaderImage = async (req, res) => {
+  try {
+    // Use Multer to upload the image
+    upload(req, res, async (err) => {
+      if (err) {
+        return res.status(400).json({ error: err.message });
+      }
+
+      const { id } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ error: "Invalid id." });
+      }
+
+      // Get the uploaded file path
+      const imagePath = req.file
+        ? `/uploads/images/${req.file.filename}`
+        : null;
+
+      if (!imagePath) {
+        return res.status(400).json({ error: "Image upload failed." });
+      }
+
+      // Update the image column in the database
+      await sequelize.query(
+        `UPDATE leadersContent_leaders
+         SET image = :imagePath 
+         WHERE id = :id`,
+        {
+          replacements: { imagePath, id },
+        }
+      );
+
+      res.json({ message: `Image successfully updated.` });
+    });
+  } catch (error) {
+    console.error("Error updating image:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.register = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ error: "Email and password are required." });
+    }
+
+    // Hash the password using bcrypt
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Insert into the database
+    await sequelize.query(
+      `INSERT INTO users (email, password) VALUES (:email, :password)`,
+      {
+        replacements: {
+          email,
+          password: hashedPassword,
+        },
+      }
+    );
+
+    res.json({
+      message: "User registered successfully.",
+    });
+  } catch (error) {
+    if (error.original && error.original.code === "ER_DUP_ENTRY") {
+      return res.status(400).json({ error: "Email already registered." });
+    }
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+const JWT_SECRET = "wdiuhqwihjadhuhewdhwehsidhiuwhiuncd";
+
+exports.login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ error: "Email and password are required." });
+    }
+
+    // Find the user in the database
+    const [results] = await sequelize.query(
+      `SELECT * FROM users WHERE email = :email`,
+      {
+        replacements: { email },
+      }
+    );
+
+    if (results.length === 0) {
+      return res.status(400).json({ error: "Invalid email or password." });
+    }
+
+    const user = results[0];
+
+    // Check the password
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      return res.status(400).json({ error: "Invalid email or password." });
+    }
+
+    // Generate JWT
+    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, {
+      expiresIn: "1h",
+    });
+
+    res.json({
+      message: "Login successful.",
+      token,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// PDF upload handler
+exports.uploadPDF = async (req, res) => {
+  try {
+    const { documentType, description } = req.body;
+    const pdfFile = req.file;
+
+    if (!documentType) {
+      return res.status(400).json({ error: "Document type is required" });
+    }
+
+    if (!pdfFile) {
+      return res.status(400).json({ error: "PDF file is required" });
+    }
+
+    // Construct file path
+    const pdfPath = `uploads/documents/${pdfFile.filename}`;
+
+    // You can save PDF info to database here
+    // Example: await sequelize.query(...)
+
+    res.json({
+      message: `PDF uploaded successfully`,
+      pdfPath,
+      originalName: pdfFile.originalname,
+      size: pdfFile.size,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: error.message });
   }
 };
